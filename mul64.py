@@ -7,7 +7,7 @@ def hi(v):
 def lo(v):
     return (v & np.uint64(0xffffffff))
 
-def mul64x64_128(a, b):
+def mul64x64to128__(a, b):
     ahi = hi(a)
     alo = lo(a)
     bhi = hi(b)
@@ -29,6 +29,15 @@ def mul64x64_128(a, b):
 
     return (rhi, rlo)
 
+def to128(hi, lo):
+    hi, lo = hi.astype('object'), lo.astype('object')
+    return ((hi << 64) | lo)
+
+def mul64x64to128(a, b):
+    hi, lo = mul64x64to128__(a, b)
+    return to128(hi, lo)
+
+
 if __name__ == '__main__':
     import unittest
     import random
@@ -40,13 +49,12 @@ if __name__ == '__main__':
         def setup(self): pass
 
         def test_wrong(self):
-            a, b = np.uint64(1), np.uint64(self.MAX_UINT64)
-            self.assertFalse(mul64x64_128(a, b) == 0)
+            a64, b64 = np.uint64(1), np.uint64(self.MAX_UINT64)
+            self.assertFalse(mul64x64to128(a64, b64) == 0)
 
         def __check(self, a, b):
             a64, b64 = np.uint64(a), np.uint64(b)
-            rhi, rlo = mul64x64_128(a64, b64)
-            self.assertEqual(int(a)*int(b), (int(rhi) << 64) + int(rlo))
+            self.assertEqual(int(a)*int(b), mul64x64to128(a64, b64))
 
         def test_int_limits(self):
             self.__check(self.MAX_UINT64, self.MAX_UINT64)
@@ -58,11 +66,9 @@ if __name__ == '__main__':
                 self.__check(random.randint(0, self.MAX_UINT64), random.randint(0, self.MAX_UINT64))
 
         def test_array_rand(self):
-            a = np.random.randint(0, self.MAX_UINT64, 1000000, dtype=np.uint64)
-            b = np.random.randint(0, self.MAX_UINT64, len(a), dtype=np.uint64)
-            hi, lo = mul64x64_128(a, b)
-            ai, bi = a.astype('object'), b.astype('object')
-            hi, lo = hi.astype('object'), lo.astype('object')
-            self.assertTrue(np.array_equal(ai * bi, ((hi << 64) | lo)))
+            a64 = np.random.randint(0, self.MAX_UINT64, 1000000, dtype=np.uint64)
+            b64 = np.random.randint(0, self.MAX_UINT64, len(a64), dtype=np.uint64)
+            ai, bi = a64.astype('object'), b64.astype('object')
+            self.assertTrue(np.array_equal(ai * bi, mul64x64to128(a64, b64)))
 
     unittest.main()
