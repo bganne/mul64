@@ -1,31 +1,26 @@
 #!/usr/bin/python
 import numpy as np
 
-def hi(v):
-    return (v >> np.uint64(32))
-
-def lo(v):
-    return (v & np.uint64(0xffffffff))
-
 def mul64x64to128__(a, b):
-    ahi = hi(a)
-    alo = lo(a)
-    bhi = hi(b)
-    blo = lo(b)
+    hi32, lo32 = np.uint64(32), np.uint64(0xffffffff)
+    ahi = a >> hi32
+    a &= lo32; alo = a
+    bhi = b >> hi32
+    b &= lo32; blo = b
 
     rhi = ahi * bhi
-    rmid1 = ahi * blo
-    rmid2 = bhi * alo
-    rlo = alo * blo
+    ahi *= blo; rmid1 = ahi
+    bhi *= alo; rmid2 = bhi
+    alo *= blo; rlo = alo
 
-    rmidlo = lo(rmid1) + lo(rmid2)
-    rmidhi = hi(rmid1) + hi(rmid2)
+    rmidhi = (rmid1 >> hi32) + (rmid2 >> hi32)
+    rmid1 &= lo32; rmid2 &= lo32; rmid1 += rmid2; rmidlo = rmid1
 
-    rlohi = hi(rlo) + lo(rmidlo)
-    rlolo = lo(rlo)
+    rlohi = (rlo >> hi32) + (rmidlo & lo32)
+    rlo &= lo32; rlolo = rlo
 
-    rhi = rhi + rmidhi + hi(rmidlo) + hi(rlohi)
-    rlo = (lo(rlohi) << np.uint64(32)) + rlolo
+    rmidlo >>= hi32; rhi += rmidhi + rmidlo + (rlohi >> hi32)
+    rlohi &= lo32; rlolo += rlohi << hi32; rlo = rlolo
 
     return (rhi, rlo)
 
